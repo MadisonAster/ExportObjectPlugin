@@ -2,6 +2,7 @@
 
 #include "ExportObjectPluginPrivatePCH.h"
 #include "StereoscopicRenderBlueprintLibrary.h"
+#include "UnrealEd.h"
 #include "ObjectTools.h"
 
 
