@@ -4,8 +4,33 @@
 #include "StereoscopicRenderBlueprintLibrary.h"
 #include "UnrealEd.h"
 #include "ObjectTools.h"
+#include "CubemapUnwrapUtils.h"
+#include "Runtime/Engine/Classes/Engine/Texture.h"
 
 
+UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube)
+{
+	int32 SizeX = TexCube->SizeX * 2;
+	int32 SizeY = SizeX / 2;
+	FIntPoint Size = FIntPoint(SizeX, SizeY);
+	EPixelFormat Format = PF_FloatRGBA;
+
+	UTexture2D* Texture = nullptr;
+	Texture = UTexture2D::CreateTransient(SizeX, SizeY, Format);
+	Texture->AddToRoot();
+	TArray<uint8> UncompressedBGRA;
+	bool bUnwrapSuccess = CubemapHelpers::GenerateLongLatUnwrap(TexCube, UncompressedBGRA, Size, Format);
+
+	if (Texture != nullptr)
+	{
+		int32 stride = (int32)(sizeof(uint16) * 4);
+		void* TextureData = Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+		FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), SizeX * SizeY * stride);
+		Texture->PlatformData->Mips[0].BulkData.Unlock();
+		Texture->UpdateResource();
+	}
+	return Texture;
+}
 
 bool UStereoscopicRenderBlueprintLibrary::ExportObjectToPath(class UObject* ObjectToExport, FString SaveFileName, FString FileNameAppendage)
 {

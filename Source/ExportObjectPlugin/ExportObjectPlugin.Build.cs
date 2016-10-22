@@ -25,7 +25,9 @@ namespace UnrealBuildTool.Rules
 					"Core",
                     "CoreUObject",
                     "Engine",
-                    "UnrealEd"
+                    "UnrealEd",
+                    "RHI",
+                    "RenderCore"
 					// ... add other public dependencies that you statically link with here ...
 				}
 				);
