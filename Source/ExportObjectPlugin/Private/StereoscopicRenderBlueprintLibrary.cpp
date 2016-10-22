@@ -13,13 +13,39 @@ UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UText
 	int32 SizeX = TexCube->SizeX * 2;
 	int32 SizeY = SizeX / 2;
 	FIntPoint Size = FIntPoint(SizeX, SizeY);
-	EPixelFormat Format = PF_FloatRGBA;
-
+	EPixelFormat Format = TexCube->GetFormat();
+	
 	UTexture2D* Texture = nullptr;
 	Texture = UTexture2D::CreateTransient(SizeX, SizeY, Format);
 	Texture->AddToRoot();
 	TArray<uint8> UncompressedBGRA;
 	bool bUnwrapSuccess = CubemapHelpers::GenerateLongLatUnwrap(TexCube, UncompressedBGRA, Size, Format);
+
+	/*
+	bool PrintedVal = false;
+	for (int i = 0; i < UncompressedBGRA.Num(); i++) {
+		if (!PrintedVal) {
+			PrintedVal = true;
+			UE_LOG(LogExportObjectPlugin, Warning, TEXT("UncompressedBGRA[i] %d"), UncompressedBGRA[i]);
+			float LinearColor = UncompressedBGRA[i] / 255.0f;
+			UE_LOG(LogExportObjectPlugin, Warning, TEXT("LinearColor %f"), LinearColor);
+			float GammaColor = LinearColor / (LinearColor + 0.187) * 1.035;
+			GammaColor = GammaColor * 255.0f;
+			UE_LOG(LogExportObjectPlugin, Warning, TEXT("GammaColor %f"), GammaColor);
+			uint8 IntGammaColor = GammaColor;
+			UE_LOG(LogExportObjectPlugin, Warning, TEXT("IntGammaColor %d"), IntGammaColor);
+			UncompressedBGRA[i] = IntGammaColor;
+		}
+		else {
+			float LinearColor = UncompressedBGRA[i] / 1275.0f;
+			float GammaColor = (LinearColor + 0.187) * 1.035;
+			GammaColor = LinearColor / GammaColor;
+			GammaColor = GammaColor * 255.0f;
+			uint8 IntGammaColor = GammaColor;
+			UncompressedBGRA[i] = IntGammaColor;
+		}
+	}
+	*/
 
 	if (Texture != nullptr)
 	{
@@ -27,6 +53,7 @@ UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UText
 		void* TextureData = Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 		FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), SizeX * SizeY * stride);
 		Texture->PlatformData->Mips[0].BulkData.Unlock();
+		Texture->SRGB = 0;
 		Texture->UpdateResource();
 	}
 	return Texture;
