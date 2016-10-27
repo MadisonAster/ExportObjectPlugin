@@ -7,17 +7,42 @@
 #include "CubemapUnwrapUtils.h"
 #include "Runtime/Engine/Classes/Engine/Texture.h"
 
+void UStereoscopicRenderBlueprintLibrary::ClearObject(class UObject* ThisObject)
+{
+	ThisObject->ConditionalBeginDestroy();
+	ThisObject = nullptr;
+	return;
+}
 
-UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube)
+UTexture2D* UStereoscopicRenderBlueprintLibrary::CreateTextureBuffer(class UTextureRenderTargetCube* TexCube)
+{
+	int32 SizeX = TexCube->SizeX * 2;
+	int32 SizeY = SizeX / 2;
+	FIntPoint Size = FIntPoint(SizeX, SizeY);
+	EPixelFormat Format = TexCube->GetFormat();
+
+	UTexture2D* TextureObject = nullptr;
+	TextureObject = UTexture2D::CreateTransient(SizeX, SizeY, Format);
+	TextureObject->AddToRoot();
+	TextureObject->UpdateResource();
+
+	return TextureObject;
+}
+
+
+UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube, UTexture2D* TextureObject)
 {
 	int32 SizeX = TexCube->SizeX * 2;
 	int32 SizeY = SizeX / 2;
 	FIntPoint Size = FIntPoint(SizeX, SizeY);
 	EPixelFormat Format = TexCube->GetFormat();
 	
-	UTexture2D* Texture = nullptr;
-	Texture = UTexture2D::CreateTransient(SizeX, SizeY, Format);
-	Texture->AddToRoot();
+	/*
+	UTexture2D* TextureObject = nullptr;
+	TextureObject = UTexture2D::CreateTransient(SizeX, SizeY, Format);
+	TextureObject->AddToRoot();
+	TextureObject->UpdateResource();
+	*/
 	TArray<uint8> UncompressedBGRA;
 	bool bUnwrapSuccess = CubemapHelpers::GenerateLongLatUnwrap(TexCube, UncompressedBGRA, Size, Format);
 
@@ -47,16 +72,18 @@ UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UText
 	}
 	*/
 
-	if (Texture != nullptr)
+	
+	if (TextureObject != nullptr)
 	{
 		int32 stride = (int32)(sizeof(uint16) * 4);
-		void* TextureData = Texture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+		void* TextureData = TextureObject->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
 		FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), SizeX * SizeY * stride);
-		Texture->PlatformData->Mips[0].BulkData.Unlock();
-		Texture->SRGB = 0;
-		Texture->UpdateResource();
+		TextureObject->PlatformData->Mips[0].BulkData.Unlock();
+		TextureObject->SRGB = 0;
+		TextureObject->UpdateResource();
 	}
-	return Texture;
+	//UncompressedBGRA.Empty();
+	return TextureObject;
 }
 
 bool UStereoscopicRenderBlueprintLibrary::ExportObjectToPath(class UObject* ObjectToExport, FString SaveFileName, FString FileNameAppendage)

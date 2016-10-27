@@ -13,7 +13,13 @@ class EXPORTOBJECTPLUGIN_API UStereoscopicRenderBlueprintLibrary : public UBluep
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Online")
-	static UTexture2D* UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube);
+	static void ClearObject(class UObject* ThisObject);
+
+	UFUNCTION(BlueprintCallable, Category = "Online")
+	static UTexture2D* CreateTextureBuffer(class UTextureRenderTargetCube* TexCube);
+
+	UFUNCTION(BlueprintCallable, Category = "Online")
+	static UTexture2D* UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube, UTexture2D* TextureObject);
 
 	UFUNCTION(BlueprintCallable, Category = "Online")
 	static bool ExportObjectToPath(class UObject* ObjectToExport, FString SaveFileName, FString FileNameAppendage);
