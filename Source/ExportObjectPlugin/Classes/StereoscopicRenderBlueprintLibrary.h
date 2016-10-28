@@ -13,7 +13,7 @@ class EXPORTOBJECTPLUGIN_API UStereoscopicRenderBlueprintLibrary : public UBluep
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "Online")
-	static void ClearObject(class UObject* ThisObject);
+	static bool ExportFromRenderTarget(class UTextureRenderTarget2D* TextureTarget, const FString ImagePath, const FLinearColor ClearColour);
 
 	UFUNCTION(BlueprintCallable, Category = "Online")
 	static UTexture2D* CreateTextureBuffer(class UTextureRenderTargetCube* TexCube);

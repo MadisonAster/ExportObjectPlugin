@@ -7,11 +7,98 @@
 #include "CubemapUnwrapUtils.h"
 #include "Runtime/Engine/Classes/Engine/Texture.h"
 
-void UStereoscopicRenderBlueprintLibrary::ClearObject(class UObject* ThisObject)
+#include "Runtime/ImageWrapper/Public/Interfaces/IImageWrapper.h"
+#include "Runtime/ImageWrapper/Public/Interfaces/IImageWrapperModule.h"
+
+static IImageWrapperPtr GetImageWrapperByExtention(const FString InImagePath)
 {
-	ThisObject->ConditionalBeginDestroy();
-	ThisObject = nullptr;
-	return;
+	IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
+	if (InImagePath.EndsWith(".png"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+	}
+	else if (InImagePath.EndsWith(".jpg") || InImagePath.EndsWith(".jpeg"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::JPEG);
+	}
+	else if (InImagePath.EndsWith(".bmp"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::BMP);
+	}
+	else if (InImagePath.EndsWith(".ico"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::ICO);
+	}
+	else if (InImagePath.EndsWith(".exr"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::EXR);
+	}
+	else if (InImagePath.EndsWith(".icns"))
+	{
+		return ImageWrapperModule.CreateImageWrapper(EImageFormat::ICNS);
+	}
+
+	return nullptr;
+}
+
+bool UStereoscopicRenderBlueprintLibrary::ExportFromRenderTarget(class UTextureRenderTarget2D* TextureTarget, const FString ImagePath, const FLinearColor ClearColour)
+{
+	//Copied code from UVictoryBPFunctionLibrary::CaptureComponent2D_SaveImage
+
+	UE_LOG(LogTemp, Warning, TEXT("ImagePath"));
+
+	FRenderTarget* RenderTarget = TextureTarget->GameThread_GetRenderTargetResource();
+	/*
+	if (RenderTarget == nullptr)
+	{
+		return false;
+	}*/
+
+	TArray<FColor> RawPixels;
+
+	// Format not supported - use PF_B8G8R8A8.
+	/*
+	if (TextureTarget->GetFormat() != PF_B8G8R8A8)
+	{
+		// TRACEWARN("Format not supported - use PF_B8G8R8A8.");
+		UE_LOG(LogTemp, Warning, TEXT("Format not supported - use PF_B8G8R8A8."));
+		return false;
+	}
+	*/
+
+	if (!RenderTarget->ReadPixels(RawPixels))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("!RenderTarget->ReadPixels(RawPixels)"));
+		return false;
+	}
+
+	// Convert to FColor.
+	FColor ClearFColour = ClearColour.ToFColor(false); // FIXME - want sRGB or not?
+
+	for (auto& Pixel : RawPixels)
+	{
+		// Switch Red/Blue changes.
+		const uint8 PR = Pixel.R;
+		const uint8 PB = Pixel.B;
+		Pixel.R = PB;
+		Pixel.B = PR;
+
+		// Set alpha based on RGB values of ClearColour.
+		Pixel.A = ((Pixel.R == ClearFColour.R) && (Pixel.G == ClearFColour.G) && (Pixel.B == ClearFColour.B)) ? 0 : 255;
+	}
+
+	IImageWrapperPtr ImageWrapper = GetImageWrapperByExtention(ImagePath);
+
+	const int32 Width = TextureTarget->SizeX;
+	const int32 Height = TextureTarget->SizeY;
+
+	if (ImageWrapper.IsValid() && ImageWrapper->SetRaw(&RawPixels[0], RawPixels.Num() * sizeof(FColor), Width, Height, ERGBFormat::RGBA, 8))
+	{
+		FFileHelper::SaveArrayToFile(ImageWrapper->GetCompressed(), *ImagePath);
+		return true;
+	}
+
+	return false;
 }
 
 UTexture2D* UStereoscopicRenderBlueprintLibrary::CreateTextureBuffer(class UTextureRenderTargetCube* TexCube)
@@ -28,6 +115,8 @@ UTexture2D* UStereoscopicRenderBlueprintLibrary::CreateTextureBuffer(class UText
 
 	return TextureObject;
 }
+
+
 
 
 UTexture2D* UStereoscopicRenderBlueprintLibrary::UnwrapCubemapTarget(class UTextureRenderTargetCube* TexCube, UTexture2D* TextureObject)
@@ -90,7 +179,7 @@ bool UStereoscopicRenderBlueprintLibrary::ExportObjectToPath(class UObject* Obje
 {
 	if (ObjectToExport == nullptr)
 	{
-		UE_LOG(LogExportObjectPlugin, Warning, TEXT("Export Object to Path called without a valid object!"));
+		UE_LOG(LogTemp, Warning, TEXT("Export Object to Path called without a valid object!"));
 		return false;
 	}
 
