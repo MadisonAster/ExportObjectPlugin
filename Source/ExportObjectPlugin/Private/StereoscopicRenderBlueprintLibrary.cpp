@@ -56,6 +56,7 @@ bool UStereoscopicRenderBlueprintLibrary::ExportFromRenderTarget(class UTextureR
 
 	TArray<FColor> RawPixels;
 
+
 	// Format not supported - use PF_B8G8R8A8.
 	/*
 	if (TextureTarget->GetFormat() != PF_B8G8R8A8)
@@ -74,6 +75,18 @@ bool UStereoscopicRenderBlueprintLibrary::ExportFromRenderTarget(class UTextureR
 
 	// Convert to FColor.
 	FColor ClearFColour = ClearColour.ToFColor(false); // FIXME - want sRGB or not?
+
+	bool PrintedVal = false;
+	for (int i = 0; i < RawPixels.Num(); i++) {
+		//Pulled math from here https://docs.unrealengine.com/latest/INT/Engine/Rendering/PostProcessEffects/ColorGrading/
+		FColor LinearColor = RawPixels[i];
+		uint8 RR = ((LinearColor.R / 255.0f) / (((LinearColor.R / 255.0f) + 0.187) * 1.035)) * 255.0f;
+		uint8 GG = ((LinearColor.G / 255.0f) / (((LinearColor.G / 255.0f) + 0.187) * 1.035)) * 255.0f;
+		uint8 BB = ((LinearColor.B / 255.0f) / (((LinearColor.B / 255.0f) + 0.187) * 1.035)) * 255.0f;
+		uint8 AA = ((LinearColor.A / 255.0f) / (((LinearColor.A / 255.0f) + 0.187) * 1.035)) * 255.0f;
+		FColor SRGBColor = FColor(RR, GG, BB, AA);
+		RawPixels[i] = SRGBColor;
+	}
 
 	for (auto& Pixel : RawPixels)
 	{
